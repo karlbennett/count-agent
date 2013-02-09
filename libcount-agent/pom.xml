@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>count-agent</artifactId>
+        <groupId>count-agent</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <name>libcount-agent.so</name>
+
+    <groupId>count-agent</groupId>
+
+    <artifactId>libcount-agent</artifactId>
+
+    <version>1.0-SNAPSHOT</version>
+
+    <url>http://maven.apache.org</url>
+
+    <packaging>so</packaging>
+
+    <build>
+        <plugins>
+            <plugin>
+                <!-- Configure the maven native plugin, this will compile the native code and install it into the -->
+                <!-- local repository. -->
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>native-maven-plugin</artifactId>
+                <version>1.0-alpha-7</version>
+                <!-- Must enable the maven extensions to allow the "so" packaging type. -->
+                <extensions>true</extensions>
+                <configuration>
+
+                    <linkerStartOptions>
+                        <!-- JVMTI agents must be compiled as shared libraries. -->
+                        <linkerStartOption>-shared</linkerStartOption>
+                    </linkerStartOptions>
+
+                    <sources>
+                        <!-- Tell the native plugin where the source code is and what files to compile. -->
+                        <source>
+                            <directory>src/main/native</directory>
+                            <fileNames>
+                                <fileName>count-agent.c</fileName>
+                            </fileNames>
+                        </source>
+
+                        <!-- Add the Java include directory to the include path. -->
+                        <source>
+                            <directory>${env.JDK_HOME}/include</directory>
+                            <dependencyAnalysisParticipation>false</dependencyAnalysisParticipation>
+                        </source>
+                    </sources>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

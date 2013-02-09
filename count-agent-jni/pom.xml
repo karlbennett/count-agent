@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <artifactId>count-agent</artifactId>
+        <groupId>count-agent</groupId>
+        <version>1.0-SNAPSHOT</version>
+    </parent>
+
+    <name>count-agent-jni</name>
+
+    <groupId>count-agent</groupId>
+
+    <artifactId>count-agent-jni</artifactId>
+
+    <version>1.0-SNAPSHOT</version>
+
+    <url>http://maven.apache.org</url>
+
+    <properties>
+        <libcount-agent.version>1.0-SNAPSHOT</libcount-agent.version>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <compilerVersion>1.6</compilerVersion>
+                    <fork>true</fork>
+                    <source>1.6</source>
+                    <target>1.6</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <!-- Tell maven to copy the libcount-agent.so dependency into the build directory. This is so that it -->
+                <!-- can be linked to the JNI code and used within the tests. -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>2.6</version>
+                <executions>
+                    <execution>
+                        <id>native-dependencies</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <includeArtifactIds>libcount-agent</includeArtifactIds>
+                            <outputDirectory>${project.build.directory}</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <forkMode>once</forkMode>
+                    <environmentVariables>
+                        <LD_LIBRARY_PATH>${project.build.directory}</LD_LIBRARY_PATH>
+                    </environmentVariables>
+                    <!-- Tell the surefire plugin to attach the libcount-agent to the test JVM. -->
+                    <argLine>-agentlib:count-agent-${libcount-agent.version}</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>count-agent</groupId>
+            <artifactId>libcount-agent</artifactId>
+            <version>${libcount-agent.version}</version>
+            <type>so</type>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.8.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

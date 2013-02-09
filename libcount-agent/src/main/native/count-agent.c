@@ -44,9 +44,15 @@ JNIEXPORT void JNICALL Java_count_agent_NewEvent_nativeNewEvent(JNIEnv *env, jcl
     printf("New Event\n");
 }
 
-void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size) {
+void JNICALL objectFreeCallBack(jvmtiEnv *jvmti, jlong tag) {
+
+    printf("Object Freed\n");
 }
 
+void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size) {
+
+    printf("Object Allocated\n");
+}
 
 /**
  * This function is called when the JVM starts and is used to initialise the JVMTI agent.
@@ -80,6 +86,25 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     error = (*jvmti)->AddCapabilities(jvmti, &capabilities);
     handleError(jvmti, error, "Unable to get necessary JVMTI capabilities.");
 
+    // Allocate the callbacks struct, this will hold the callback functions that will be passed into JVMTI.
+    jvmtiEventCallbacks callbacks;
+    (void)memset(&callbacks, 0, sizeof(callbacks));
+
+    // Asign the callbacks.
+    callbacks.ObjectFree = &objectFreeCallBack; // JVMTI_EVENT_VM_OBJECT_ALLOC
+    callbacks.VMObjectAlloc = &objectAllocCallBack; // JVMTI_EVENT_VM_OBJECT_ALLOC
+
+    // Add the callbacks.
+    error = (*jvmti)->SetEventCallbacks(jvmti, &callbacks, (jint)sizeof(callbacks));
+    handleError(jvmti, error, "Cannot set jvmti callbacks");
+
+
+    // Enable the object free and allocation events.
+    error = (*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, JVMTI_EVENT_OBJECT_FREE, (jthread)NULL);
+    handleError(jvmti, error, "Cannot set event notification");
+
+    error = (*jvmti)->SetEventNotificationMode(jvmti, JVMTI_ENABLE, JVMTI_EVENT_VM_OBJECT_ALLOC, (jthread)NULL);
+    handleError(jvmti, error, "Cannot set event notification");
 
     printf("Agent Initialised\n");
 

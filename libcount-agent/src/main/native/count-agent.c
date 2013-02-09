@@ -44,11 +44,29 @@ JNIEXPORT void JNICALL Java_count_agent_NewEvent_nativeNewEvent(JNIEnv *env, jcl
     printf("New Event\n");
 }
 
+/**
+ * A callback that will be registered to the JVMTI_EVENT_OBJECT_FREE event which will call it when ever a tagged object
+ * has been freed.
+ *
+ * @param jvmti a pointer to the JVMTI struct to allow access to the error API.
+ * @param tag   the tag of the object that has been freed.
+ */
 void JNICALL objectFreeCallBack(jvmtiEnv *jvmti, jlong tag) {
 
     printf("Object Freed\n");
 }
 
+/**
+ * A callback that will be registered to the JVMTI_EVENT_VM_OBJECT_ALLOC event which will call it when ever an object is
+ * constructed that can't be instrumented.
+ *
+ * @param jvmti  a pointer to the JVMTI struct to allow access to the error API.
+ * @param env    the pointer to the JVM environment struct.
+ * @param thread a struct that represents the thread that the object has been created in.
+ * @param object a struct that represents the object that has been allocated.
+ * @param klass  a struct that represents the class of the allocated object.
+ * @param size   the size of the allocated object.
+ */
 void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size) {
 
     printf("Object Allocated\n");
@@ -91,7 +109,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     (void)memset(&callbacks, 0, sizeof(callbacks));
 
     // Asign the callbacks.
-    callbacks.ObjectFree = &objectFreeCallBack; // JVMTI_EVENT_VM_OBJECT_ALLOC
+    callbacks.ObjectFree = &objectFreeCallBack; // JVMTI_EVENT_OBJECT_FREE
     callbacks.VMObjectAlloc = &objectAllocCallBack; // JVMTI_EVENT_VM_OBJECT_ALLOC
 
     // Add the callbacks.

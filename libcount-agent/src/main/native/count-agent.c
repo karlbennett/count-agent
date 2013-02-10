@@ -2,6 +2,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <time.h>
 #include "count_agent_NewEvent.h"
 #include "jvmti.h"
 
@@ -28,6 +29,72 @@ void handleError(jvmtiEnv *jvmti, jvmtiError errorNumber, const char *message) {
     fprintf(stderr, "ERROR: JVMTI: %d(%s): %s\n", errorNumber, errorString, message);
 
     exit(3);
+}
+
+/**
+ * Get the name of the supplied jclass in the standard Java package notation. e.g. java.lang.String
+ *
+ * @param jvmti a pointer to the JVMTI struct to allow access to the error API.
+ * @param klass the class to get the class name for.
+ * @return a string containing the class name.
+ */
+char* getClassName(jvmtiEnv *jvmti, jclass klass) {
+
+    jvmtiError error;
+
+    char *signature = NULL;
+    error = (*jvmti)->GetClassSignature(jvmti, klass, &signature, NULL);
+
+    // Check to see if the supplied class is an array, if it is the class name should have an array suffix "[]".
+    char *signatureSuffix = strchr(signature, '[') ? "[]" : "";
+
+    // Find the index of the 'L' character that denotes a fully qualified class.
+    char *signatureMinusPrefix = strchr(signature, 'L');
+
+    // We only support class names for now.
+    if (NULL == signatureMinusPrefix) return NULL;
+
+    signatureMinusPrefix++; // Then move passed it to get to the class name.
+
+    // Find the semicolon so that we can remove it from the end of the string.
+    char *semicolon = strrchr(signatureMinusPrefix, ';');
+
+    // Get the size of the className string by calculating the difference between the semicolon and signatureMinusPrefix
+    // pointer values and adding 1 for the null character.
+    jlong size = (semicolon - signatureMinusPrefix) + 1;
+
+    // Allocate memory for the className string.
+    char *className = NULL;
+    error = (*jvmti)->Allocate(jvmti, size, (unsigned char**) &className);
+    handleError(jvmti, error, "Unable to generic signature.");
+
+    // Populate the classANme string and set it's null character.
+    strncpy(className, signatureMinusPrefix, size - 1);
+    className[size - 1] = '\0';
+
+    // Now that we are finished with the signature string we should clean it up.
+    error = (*jvmti)->Deallocate(jvmti, (unsigned char*) signature);
+    handleError(jvmti, error, "Unable to deallocate signature.");
+
+    // Replace the '/''s in the className with '.''s.
+    char *forwardSlash = NULL;
+    while (forwardSlash = strrchr(className, '/')) *forwardSlash = '.';
+
+    return className;
+}
+
+/**
+ * Print a CSV line containing the supplied operation (ADD, DELETE) and class name.
+ *
+ * @param operation the operation that was carried out on the class.
+ * @param className the name of the class.
+ */
+void printCSV(char *operation, char *className) {
+
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
+    printf("%d,%s,%s\n", now.tv_usec, operation, className);
 }
 
 
@@ -70,7 +137,15 @@ void JNICALL objectFreeCallBack(jvmtiEnv *jvmti, jlong tag) {
  */
 void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size) {
 
-    printf("Object Allocated\n");
+    char *className = getClassName(jvmti, klass);
+
+    if (className) {
+
+        printCSV("ADD", className);
+
+        jvmtiError  error = (*jvmti)->Deallocate(jvmti, (unsigned char*) className);
+        handleError(jvmti, error, "Unable to deallocate className.");
+    }
 }
 
 
@@ -82,6 +157,7 @@ void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, j
  *                  e.g. "java -agentlib:count-agent=some,option,string" would mean the string "some,option,string"
  *                  would be pointed to by the options argument.
  * @param reserved should not be used.
+ * @return the JVMTI agent start statuc code.
  */
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) {
 	printf("Agent Started\n");

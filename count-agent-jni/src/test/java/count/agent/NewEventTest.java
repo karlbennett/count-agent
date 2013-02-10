@@ -11,5 +11,7 @@ public class NewEventTest {
     public void testNewEvent() throws Exception {
 
         NewEvent.newEvent(new Object());
+
+        System.gc();
     }
 }

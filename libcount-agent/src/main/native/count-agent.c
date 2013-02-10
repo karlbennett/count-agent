@@ -7,6 +7,9 @@
 #include "jvmti.h"
 
 
+// Global JVMTI interface reference that is used by the Java_count_agent_NewEvent_nativeNewEvent JNI function.
+jvmtiEnv *globalJvmti;
+
 /**
  * Handle any JVMTI errors by printing their message then terminating.
  *
@@ -97,6 +100,26 @@ void printCSV(char *operation, char *className) {
     printf("%d,%s,%s\n", now.tv_usec, operation, className);
 }
 
+/**
+ * Log an object creation event.
+ *
+ * @param jvmti a pointer to the JVMTI struct to allow access to the error API.
+ * @param object a struct that represents the object that has been allocated.
+ * @param klass  a struct that represents the class of the allocated object.
+ */
+void logADDEvent(jvmtiEnv *jvmti, jobject object, jclass klass) {
+
+    char *className = getClassName(jvmti, klass);
+
+    if (className) {
+
+        jvmtiError error = (*jvmti)->SetTag(jvmti, object, (jlong) className);
+        handleError(jvmti, error, "Could not tag object.");
+
+        printCSV("ADD", className);
+    }
+}
+
 
 /**
  * This is the JNI native function that will be executed for every call to the
@@ -108,7 +131,7 @@ void printCSV(char *operation, char *className) {
  */
 JNIEXPORT void JNICALL Java_count_agent_NewEvent_nativeNewEvent(JNIEnv *env, jclass newEventClass, jobject newEventObject) {
 
-    printf("New Event\n");
+    logADDEvent(globalJvmti, newEventObject, (*env)->GetObjectClass(env, newEventObject));
 }
 
 
@@ -121,7 +144,12 @@ JNIEXPORT void JNICALL Java_count_agent_NewEvent_nativeNewEvent(JNIEnv *env, jcl
  */
 void JNICALL objectFreeCallBack(jvmtiEnv *jvmti, jlong tag) {
 
-    printf("Object Freed\n");
+    char *className = (char*) tag;
+
+    printCSV("DELETE", className);
+
+    jvmtiError  error = (*jvmti)->Deallocate(jvmti, (unsigned char*) className);
+    handleError(jvmti, error, "Unable to deallocate className.");
 }
 
 /**
@@ -137,15 +165,7 @@ void JNICALL objectFreeCallBack(jvmtiEnv *jvmti, jlong tag) {
  */
 void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, jobject object, jclass klass, jlong size) {
 
-    char *className = getClassName(jvmti, klass);
-
-    if (className) {
-
-        printCSV("ADD", className);
-
-        jvmtiError  error = (*jvmti)->Deallocate(jvmti, (unsigned char*) className);
-        handleError(jvmti, error, "Unable to deallocate className.");
-    }
+    logADDEvent(jvmti, object, klass);
 }
 
 
@@ -167,6 +187,7 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *jvm, char *options, void *reserved) 
     // Get the JVMTI environment struct so that we can configure the agent.
     jvmtiEnv *jvmti;
     (void)(*jvm)->GetEnv(jvm, (void**)&jvmti, JVMTI_VERSION_1_0);
+    globalJvmti = jvmti; // Set the global JVMTI interface reference so that the JNI function has access to it.
 
     // Allocate a capabilities struct that will be used to request the JVMTI capabilities the agents requires.
     jvmtiCapabilities capabilities;

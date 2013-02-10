@@ -44,6 +44,7 @@ JNIEXPORT void JNICALL Java_count_agent_NewEvent_nativeNewEvent(JNIEnv *env, jcl
     printf("New Event\n");
 }
 
+
 /**
  * A callback that will be registered to the JVMTI_EVENT_OBJECT_FREE event which will call it when ever a tagged object
  * has been freed.
@@ -71,6 +72,7 @@ void JNICALL objectAllocCallBack(jvmtiEnv *jvmti, JNIEnv *env, jthread thread, j
 
     printf("Object Allocated\n");
 }
+
 
 /**
  * This function is called when the JVM starts and is used to initialise the JVMTI agent.

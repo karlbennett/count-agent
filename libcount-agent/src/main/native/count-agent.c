@@ -69,7 +69,7 @@ char* getClassName(jvmtiEnv *jvmti, jclass klass) {
     // Allocate memory for the className string.
     char *className = NULL;
     error = (*jvmti)->Allocate(jvmti, size, (unsigned char**) &className);
-    handleError(jvmti, error, "Unable to generic signature.");
+    handleError(jvmti, error, "Unable to allocate className.");
 
     // Populate the classANme string and set it's null character.
     strncpy(className, signatureMinusPrefix, size - 1);
